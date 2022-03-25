@@ -1,0 +1,6 @@
+[submodule "libs/kcp"]
+	path = libs/kcp
+	url = https://github.com/skywind3000/kcp.git
+[submodule "libs/boost"]
+	path = libs/boost
+	url = https://github.com/System233/boost.git
