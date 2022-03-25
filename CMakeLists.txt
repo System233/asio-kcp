@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.12)
+project(asio-kcp)
+add_subdirectory(libs/kcp)
+add_library(asio-kcp INTERFACE)
+target_include_directories(asio-kcp INTERFACE libs/kcp libs/boost include)
+target_link_libraries(asio-kcp INTERFACE kcp)
