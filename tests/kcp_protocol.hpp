@@ -6,7 +6,7 @@
 #include "ikcp.hpp"
 #include <protocol.hpp>
 #include <iostream>
-class kcp_protocol : public protocol
+class kcp_protocol : public protocol<kcp_protocol>
 {
     boost::asio::io_context &m_io_context;
     ikcp *m_kcp;
@@ -28,7 +28,7 @@ class kcp_protocol : public protocol
         auto time=now();
         auto delay=m_kcp->check(time)-time;
         m_update_timer.expires_from_now(std::chrono::milliseconds(delay));
-        m_update_timer.async_wait(boost::bind(&kcp_protocol::update,this,boost::asio::placeholders::error));
+        m_update_timer.async_wait(boost::bind(&kcp_protocol::update,shared_from_this(),boost::asio::placeholders::error));
     }
     static uint32_t now(){
         // return boost::posix_time::microsec_clock::universal_time().time_of_day().total_milliseconds();

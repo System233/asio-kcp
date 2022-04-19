@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 #include <protocol.hpp>
-class raw_protocol:public protocol{
+class raw_protocol:public protocol<raw_protocol>{
     output_func m_output;
 public:
     raw_protocol(boost::asio::io_context&io,intptr_t id, output_func func):protocol(io,id,func),m_output(func){};

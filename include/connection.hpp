@@ -6,6 +6,9 @@
 #ifndef ASIO_CONNECTION_H
 #define ASIO_CONNECTION_H
 #include "connection_channel.hpp"
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+
 #include <iostream>
 namespace iudp
 {
@@ -69,7 +72,7 @@ namespace iudp
         using connection_channel_t=connection_channel<protocol>;
         using connection_t=connection<protocol>;
         connection(connection_channel_t *ch, udp::endpoint endpoint, intptr_t id) 
-        : m_protocol(ch->io_context(), id, boost::bind(&connection_t::output, this,boost::placeholders::_1)),
+        : m_protocol(boost::make_shared<protocol>(ch->io_context(), id, boost::bind(&connection_t::output, this,boost::placeholders::_1))),
             m_channel(ch),
             m_endpoint(endpoint),
             m_timeout_timer(ch->io_context())
@@ -82,12 +85,12 @@ namespace iudp
         };
 
         intptr_t id() const {
-            return m_protocol.id();
+            return m_protocol->id();
         }
 
         size_t send(boost::asio::const_buffer buffer) const
         {
-            return m_protocol.write(buffer);
+            return m_protocol->write(buffer);
         };
 
         size_t output(boost::asio::const_buffer buffer)
@@ -98,15 +101,15 @@ namespace iudp
 
         template<class T>
         void config(T const&conf){
-            m_protocol.config(conf);
+            m_protocol->config(conf);
         }
         template<class T>
         T const& config()const{
-            return m_protocol.config();
+            return m_protocol->config();
         }
 
         protocol*get(){
-            return &m_protocol;
+            return m_protocol.get();
         }
 
         connection_channel_t*channel() const { return m_channel; };
@@ -114,12 +117,13 @@ namespace iudp
         {
             update_status(status::connect);
             update_timeout();
-            return m_protocol.io(buffer);
+            return m_protocol->io(buffer);
         };
         private:
         
         connection_channel_t *m_channel;
-        protocol m_protocol;
+        boost::shared_ptr<protocol>m_protocol;
+        // protocol m_protocol;
         udp::endpoint m_endpoint;
         boost::asio::steady_timer m_timeout_timer;
         status m_status=status::unknown;

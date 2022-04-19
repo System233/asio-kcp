@@ -6,8 +6,12 @@
 #ifndef ASIO_PROTOCOL_H
 #define ASIO_PROTOCOL_H
 #include <boost/asio.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <functional>
-class protocol{
+#include <memory>
+template<class P>
+class protocol:public boost::enable_shared_from_this<P>{
 public:
     using output_func=std::function<size_t(boost::asio::const_buffer buffer)>;
     protocol(boost::asio::io_context&io,intptr_t id, output_func func){};
