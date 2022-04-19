@@ -77,7 +77,7 @@ namespace iudp
             switch (event)
             {
             case channel_event::disconnect:
-                m_connection_manager.remove_connection(conn);
+                disconnect(conn);
                 break;
             case channel_event::timeout:
                 dispatch(conn, channel_event::disconnect);
@@ -99,11 +99,32 @@ namespace iudp
 
         void connect(udp::endpoint endpoint, intptr_t id = 0)
         {
-            m_connection_manager.create_connection(endpoint, id);
+            io_context().post(
+                boost::bind(
+                    &connection_manager_t::create_connection,
+                    &m_connection_manager,
+                    endpoint,
+                    id
+            ));
         }
         void disconnect(udp::endpoint endpoint, intptr_t id = 0)
         {
-            m_connection_manager.remove_connection(endpoint, id);
+            io_context().post(
+                boost::bind(
+                    &connection_manager_t::remove_connection,
+                    &m_connection_manager,
+                    endpoint,
+                    id
+            ));
+        }
+        void disconnect(connection_t*conn)
+        {
+            io_context().post(
+                boost::bind(
+                    &connection_manager_t::remove_connection,
+                    &m_connection_manager,
+                    conn
+            ));
         }
 
         handler_t handler() const
@@ -132,7 +153,7 @@ namespace iudp
         void udp_post(boost::asio::const_buffer buffer, udp::endpoint endpoint)
         {
 
-            m_io_context.post(boost::bind(&connection_channel_t::udp_handle,
+            io_context().post(boost::bind(&connection_channel_t::udp_handle,
                                           this,
                                           std::string(static_cast<const char *>(buffer.data()), buffer.size()),
                                           endpoint));
