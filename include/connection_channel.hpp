@@ -8,7 +8,8 @@
 #include <boost/array.hpp>
 #include <boost/bind/bind.hpp>
 #include <connection_manager.hpp>
-// #include <channel_queue.hpp>
+#include <udp_channel.hpp>
+
 namespace iudp
 {
     using boost::asio::ip::udp;
@@ -27,29 +28,18 @@ namespace iudp
     class connection_channel
     {
 
-        void start_recvice()
+        void udp_post(boost::asio::const_buffer buffer, udp::endpoint endpoint)
         {
-            m_socket.async_receive_from(
-                boost::asio::buffer(m_recv_buffer),
-                m_remote_endpoint,
-                boost::bind(&connection_channel::handle_recvice, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-        }
-        void handle_recvice(boost::system::error_code const &error, size_t bytes_transferred)
-        {
-            if (!error)
-            {
-                udp_handle(boost::asio::const_buffer(m_recv_buffer.data(), bytes_transferred), m_remote_endpoint);
-                if (!stopped)
-                {
-                    start_recvice();
-                }
-            }
-          
+
+            m_io_context.post(boost::bind(&connection_channel<protocol>::udp_handle,
+                                          this,
+                                          std::string(static_cast<const char *>(buffer.data()), buffer.size()),
+                                          endpoint));
         }
 
-        void udp_handle(boost::asio::const_buffer buffer, udp::endpoint endpoint)
+        void udp_handle(std::string data, udp::endpoint endpoint)
         {
-            // m_queue.push(std::make_pair(std::string((char const*)buffer.data(),buffer.size()),endpoint));
+            boost::asio::const_buffer buffer(data.data(), data.size());
             auto key = protocol::id(buffer);
             auto conn = m_connection_manager.get_connection(endpoint, key);
             if (!conn)
@@ -70,33 +60,31 @@ namespace iudp
         using handler_t = std::function<bool(connection<protocol> *conn, channel_event event, boost::asio::const_buffer const &buffer)>;
 
         connection_channel(boost::asio::io_context &io_context,
-                udp::endpoint const &endpoint,
-                handler_t handler) : m_io_context(io_context),
-                                     m_socket(io_context, endpoint),
-                                     m_handler(handler),
-                                     m_connection_manager(this)
+                           udp::endpoint const &endpoint,
+                           handler_t handler) : m_io_context(io_context),
+                                                m_udp_channel(endpoint, [this](auto buffer, auto endpoint)
+                                                              { udp_post(buffer, endpoint); }),
+                                                m_handler(handler),
+                                                m_connection_manager(this)
         {
         }
-        udp::endpoint local_endpoint() const
-        {
-            return m_socket.local_endpoint();
-        }
-        auto udp_send(boost::asio::const_buffer const &buffer, udp::endpoint const &endpoint)
-        {
-            return m_socket.async_send_to(buffer, endpoint, boost::asio::use_future);
-        }
+
         std::future<size_t> send(boost::asio::const_buffer const &buffer, udp::endpoint const &endpoint)
         {
             return udp_send(buffer, endpoint);
         }
-
+        auto udp_send(boost::asio::const_buffer const &buffer, udp::endpoint const &endpoint)
+        {
+            return m_udp_channel.udp_send(buffer, endpoint);
+        }
         void start()
         {
             stopped = false;
-            start_recvice();
+            m_udp_channel.start();
         }
         void stop()
         {
+            m_udp_channel.stop();
             stopped = true;
         }
         boost::asio::io_context &io_context() const
@@ -106,8 +94,9 @@ namespace iudp
 
         void dispatch(connection<protocol> *conn, channel_event event, boost::asio::const_buffer const &buffer)
         {
-            auto result=m_handler(conn, event, buffer);
-            if(result){
+            auto result = m_handler(conn, event, buffer);
+            if (result)
+            {
                 return;
             }
             switch (event)
@@ -116,7 +105,7 @@ namespace iudp
                 m_connection_manager.remove_connection(conn);
                 break;
             case channel_event::timeout:
-                dispatch(conn,channel_event::disconnect);
+                dispatch(conn, channel_event::disconnect);
                 break;
             default:
                 break;
@@ -125,7 +114,7 @@ namespace iudp
         void dispatch(connection<protocol> *conn, channel_event event)
         {
             boost::asio::const_buffer buffer(nullptr, 0);
-            dispatch(conn, event,buffer);
+            dispatch(conn, event, buffer);
         }
         template <class F>
         void post(F func)
@@ -162,11 +151,11 @@ namespace iudp
 
     private:
         connection_manager<protocol> m_connection_manager;
-        // channel_queue<std::string> m_queue;
         boost::asio::io_context &m_io_context;
-        udp::socket m_socket;
-        udp::endpoint m_remote_endpoint;
-        boost::array<char, 0x10000> m_recv_buffer;
+        udp_channel m_udp_channel;
+        // udp::socket m_socket;
+        // udp::endpoint m_remote_endpoint;
+        // boost::array<char, 0x10000> m_recv_buffer;
         handler_t m_handler;
         size_t m_timeout = 10000;
         bool stopped = false;

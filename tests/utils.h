@@ -7,8 +7,11 @@
 #include <boost/bind/bind.hpp>
 #include <iostream>
 #include <iomanip>
+#include <array>
 class tick_counter{
     size_t step=200;
+    size_t current=0,current_record=0;
+    std::array<std::pair<size_t,uint32_t>,10>records;
     boost::asio::steady_timer timer;
     size_t count=0,avg=0,max=0,total=0,start=0;
     static uint32_t now(){
@@ -16,11 +19,26 @@ class tick_counter{
     }
     void show(boost::system::error_code const&error){
         if(!error){
-            auto cur=count*1000/step;
+            
+            auto&node=records[current];
+
+
+            auto duration=now()-(node.second?node.second:start);
+            auto cur=current_record*1000/duration;
+
+            current_record-=node.first;
+            current_record+=count;
+            node.first=count;
+            node.second=now();
+            current=(current+1)%records.size();
+
+            total+=count;
+            count=0;
+            // auto curx=count*1000/step;
+            
             auto time=now()-start;
             auto base=1024.0*1024;
             max=std::max<size_t>(cur,max);
-            total+=count;
             avg=total*1000/time;
             std::cout<<"\r["<<time<<"ms]"<<std::setprecision(1)<<std::fixed
             <<"  "<<cur/base<<"MBps/CUR"
@@ -28,7 +46,6 @@ class tick_counter{
             <<"  "<<max/base<<"MBps/MAX"
             <<"  "<<total/base<<"MB/TOTAL"
             <<" ";
-            count=0;
             start_timer();
         }
     }
@@ -43,6 +60,6 @@ public:
     }
     size_t add(size_t byte){
         count+=byte;
-        return count;
+        return current_record;
     }
 };

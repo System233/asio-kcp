@@ -14,21 +14,20 @@ using boost::asio::ip::udp;
 using namespace iudp;
 
 #include "utils.h"
-char test[10000];
+char test[0x5000];
 using use_protocol=kcp_protocol;
 int main(int argc, char const *argv[])
 {
     const char*addr="127.0.0.1";
+    int port=10001;
     if(argc>1){
         addr=argv[1];
     }
     try
     {
-        int port = 10001;
         boost::asio::io_context io_context;
-
+        udp::resolver resolver(io_context);
         tick_counter count_timer(io_context);
-
         auto handlder = [&](connection<use_protocol> *conn, channel_event event, boost::asio::const_buffer buffer)
         {
             switch (event)
@@ -38,7 +37,7 @@ int main(int argc, char const *argv[])
  
                 // conn->send(boost::asio::const_buffer("hello!",7));
                 
-                for(auto i=0;i<1000;++i)
+                for(auto i=0;i<10000;++i)
                 conn->send(boost::asio::const_buffer(test,sizeof(test)));
                 break;
 
@@ -53,8 +52,6 @@ int main(int argc, char const *argv[])
                 break;
             case channel_event::data:
                 count_timer.add(buffer.size());
-                // std::cout << "data:" << std::string((char const *)buffer.data(), buffer.size()) << std::endl;
-                // for(auto i=0;i<100;++i)
                 conn->send(buffer);
                 break;
             default:

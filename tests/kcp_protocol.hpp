@@ -43,9 +43,9 @@ public:
           m_update_timer(io)
     {
         m_kcp->setoutput(kcp_output);
-        m_kcp->nodelay(1, 5, 2, 1);
-        m_kcp->wndsize(768,768);
-        m_kcp->rx_minrto=10;
+        m_kcp->nodelay(1, 5, 3, 1);
+        m_kcp->wndsize(512,512);
+        // m_kcp->rx_minrto=50;
         start_update();
     };
     ~kcp_protocol()
