@@ -13,14 +13,20 @@ class kcp_protocol : public protocol<kcp_protocol>
     output_func m_output;
     boost::array<char, 0x10000> m_buffer;
     boost::asio::steady_timer m_update_timer;
+    bool m_stopped;
     static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user)
     {
         kcp_protocol *protocol = static_cast<kcp_protocol *>(user);
         return (int)protocol->m_output(boost::asio::const_buffer(buf, len));
     }
     void update(boost::system::error_code const &error){
+        if(error==boost::system::errc::operation_canceled){
+            return;
+        }
         if(!error){
             m_kcp->update(now());
+        }
+        if(!m_stopped){
             start_update();
         }
     }
@@ -40,7 +46,8 @@ public:
           m_io_context(io),
           m_kcp(ikcp::create((uint32_t)id, this)),
           m_output(func),
-          m_update_timer(io)
+          m_update_timer(io),
+          m_stopped(false)
     {
         m_kcp->setoutput(kcp_output);
         m_kcp->nodelay(0, 40, 2, 1);
@@ -48,6 +55,14 @@ public:
         // m_kcp->rx_minrto=50;
         start_update();
     };
+    void start(){
+        m_stopped=false;
+        start_update();
+    }
+    void stop(){
+        m_stopped=true;
+        m_update_timer.cancel();
+    }
     ~kcp_protocol()
     {
         m_kcp->release();

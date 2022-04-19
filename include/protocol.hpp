@@ -17,6 +17,8 @@ public:
     protocol(boost::asio::io_context&io,intptr_t id, output_func func){};
     virtual ~protocol(){};
     virtual intptr_t id()const=0;
+    virtual void start(){};
+    virtual void stop(){};
 
     template<class T>
     void config(T const&);
