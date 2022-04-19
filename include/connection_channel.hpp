@@ -148,7 +148,7 @@ namespace iudp
         {
             m_timeout = time;
         }
-        connection_manager<protocol> const &m_connection_manager() const
+        connection_manager<protocol> const &connection_manager() const
         {
             return m_connection_manager;
         }
