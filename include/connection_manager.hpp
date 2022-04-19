@@ -38,6 +38,7 @@ namespace iudp
         connection_manager(connection_channel<protocol> *ch) : m_channel(ch){};
 
         auto &connections() { return m_connections; }
+        auto const&connections() const{ return m_connections; }
         auto begin() { return std::begin(connections()); }
         auto end() { return std::end(connections()); }
         auto insert(udp::endpoint const &endpoint, intptr_t id)
