@@ -53,7 +53,6 @@ public:
         m_kcp->nodelay(0, 40, 2, 1);
         m_kcp->wndsize(512,512);
         // m_kcp->rx_minrto=50;
-        start_update();
     };
     void start(){
         m_stopped=false;
@@ -71,16 +70,18 @@ public:
     {
         return m_kcp->getconv();
     };
-    virtual boost::asio::const_buffer io(boost::asio::const_buffer buffer)
-    {
+    virtual size_t handle(boost::asio::const_buffer buffer,std::function<void(boost::asio::const_buffer buffer)>const&handler){
         m_kcp->input(buffer.data(), buffer.size());
-        auto len = m_kcp->recv(m_buffer.data(), m_buffer.size());
-        if (len < 0)
-        {
-            len = 0;
-        }
-        return boost::asio::const_buffer(m_buffer.data(), len);
+        while(auto len = m_kcp->recv(m_buffer.data(), m_buffer.size())){
+            if(len<=0){
+                break;
+            }
+            handler(boost::asio::const_buffer(m_buffer.data(), len));
+        };
+        return buffer.size();
     };
+
+
     virtual size_t write(boost::asio::const_buffer buffer) const
     {
         return m_kcp->send(buffer.data(), buffer.size());

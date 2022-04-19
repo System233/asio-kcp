@@ -35,13 +35,13 @@ int main(int argc, char const *argv[])
             case channel_event::initialize:
                 std::cout << "initialize:" << conn->endpoint() << std::endl;
  
-                // conn->send(boost::asio::const_buffer("hello!",7));
+                conn->send(boost::asio::const_buffer("hello!",7));
                 
-                for(auto i=0;i<10000;++i)
-                conn->send(boost::asio::const_buffer(test,sizeof(test)));
                 break;
 
             case channel_event::connect:
+                for(auto i=0;i<10000;++i)
+                conn->send(boost::asio::const_buffer(test,sizeof(test)));
                 std::cout << "connect:" << conn->endpoint() << std::endl;
                 break;
             case channel_event::disconnect:

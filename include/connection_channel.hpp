@@ -104,8 +104,7 @@ namespace iudp
                     &connection_manager_t::create_connection,
                     &m_connection_manager,
                     endpoint,
-                    id
-            ));
+                    id));
         }
         void disconnect(udp::endpoint endpoint, intptr_t id = 0)
         {
@@ -114,17 +113,15 @@ namespace iudp
                     &connection_manager_t::remove_connection,
                     &m_connection_manager,
                     endpoint,
-                    id
-            ));
+                    id));
         }
-        void disconnect(connection_t*conn)
+        void disconnect(connection_t *conn)
         {
             io_context().post(
                 boost::bind(
                     &connection_manager_t::remove_connection,
                     &m_connection_manager,
-                    conn
-            ));
+                    conn));
         }
 
         handler_t handler() const
@@ -170,10 +167,14 @@ namespace iudp
             }
             if (conn)
             {
-                boost::asio::const_buffer ready = conn->io(buffer);
-                if (ready.size())
+                size_t current = 0;
+                while (current < data.size())
                 {
-                    dispatch(conn, channel_event::data, ready);
+                    current += conn->handle(buffer,
+                                            [&](auto buffer)
+                                            {
+                                                dispatch(conn, channel_event::data, buffer);
+                                            });
                 }
             }
         }

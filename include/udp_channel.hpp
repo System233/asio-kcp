@@ -58,28 +58,28 @@ namespace iudp
         }
         void start()
         {
-            m_worker_thread = std::thread(
+            std::thread(
                 [this]()
                 {
                     start_recvice();
                     m_io_context.run();
-                });
+                }).detach();
             stopped = false;
         }
         void stop()
         {
             m_io_context.stop();
-            if (m_worker_thread.joinable())
-            {
-                m_worker_thread.join();
-            }
+            // if (m_worker_thread.joinable())
+            // {
+            //     m_worker_thread.join();
+            // }
             stopped = true;
         }
 
     private:
         boost::asio::io_context m_io_context;
         udp::socket m_socket;
-        std::thread m_worker_thread;
+        // std::thread m_worker_thread;
         udp::endpoint m_remote_endpoint;
         boost::array<char, 0x10000> m_recv_buffer;
         handler_t m_handler;

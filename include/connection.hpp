@@ -116,11 +116,11 @@ namespace iudp
         }
 
         connection_channel_t*channel() const { return m_channel; };
-        boost::asio::const_buffer io(boost::asio::const_buffer buffer)
+        size_t handle(boost::asio::const_buffer buffer,std::function<void(boost::asio::const_buffer buffer)>const&handler)
         {
             update_status(status::connect);
             update_timeout();
-            return m_protocol_ptr->io(buffer);
+            return m_protocol_ptr->handle(buffer,handler);
         };
         private:
         

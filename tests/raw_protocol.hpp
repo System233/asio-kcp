@@ -14,9 +14,9 @@ public:
     // void config(T const&);
     // template<class T>
     // T const& config()const;
-
-    virtual boost::asio::const_buffer io(boost::asio::const_buffer buffer){
-        return buffer;
+    virtual size_t handle(boost::asio::const_buffer buffer,std::function<void(boost::asio::const_buffer buffer)>const&handler){
+        handler(buffer);
+        return buffer.size();
     };
     virtual size_t write(boost::asio::const_buffer buffer)const{
         return m_output(buffer);
