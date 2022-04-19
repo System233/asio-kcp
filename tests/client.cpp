@@ -14,7 +14,7 @@ using boost::asio::ip::udp;
 using namespace iudp;
 
 #include "utils.h"
-char test[0x5000];
+char test[1000];
 using use_protocol=kcp_protocol;
 int main(int argc, char const *argv[])
 {
