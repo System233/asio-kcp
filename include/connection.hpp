@@ -24,16 +24,11 @@ namespace iudp
             disconnect,
             timeout
         };
-        connection_channel<protocol> *m_channel;
-        protocol m_protocol;
-        udp::endpoint m_endpoint;
-        boost::asio::steady_timer m_timeout_timer;
-        status m_status=status::unknown;
 
         void update_timeout()
         {
             m_timeout_timer.expires_from_now(std::chrono::milliseconds(channel()->timeout()));
-            m_timeout_timer.async_wait(boost::bind(&connection<protocol>::on_timeout, this, boost::asio::placeholders::error));
+            m_timeout_timer.async_wait(boost::bind(&connection_t::on_timeout, this, boost::asio::placeholders::error));
         }
         void on_timeout(boost::system::error_code const &error)
         {
@@ -71,8 +66,10 @@ namespace iudp
         }
 
     public:
-        connection(connection_channel<protocol> *ch, udp::endpoint endpoint, intptr_t id) 
-        : m_protocol(ch->io_context(), id, boost::bind(&connection<protocol>::output, this,boost::placeholders::_1)),
+        using connection_channel_t=connection_channel<protocol>;
+        using connection_t=connection<protocol>;
+        connection(connection_channel_t *ch, udp::endpoint endpoint, intptr_t id) 
+        : m_protocol(ch->io_context(), id, boost::bind(&connection_t::output, this,boost::placeholders::_1)),
             m_channel(ch),
             m_endpoint(endpoint),
             m_timeout_timer(ch->io_context())
@@ -112,13 +109,20 @@ namespace iudp
             return &m_protocol;
         }
 
-        connection_channel<protocol>*channel() const { return m_channel; };
+        connection_channel_t*channel() const { return m_channel; };
         boost::asio::const_buffer io(boost::asio::const_buffer buffer)
         {
             update_status(status::connect);
             update_timeout();
             return m_protocol.io(buffer);
         };
+        private:
+        
+        connection_channel_t *m_channel;
+        protocol m_protocol;
+        udp::endpoint m_endpoint;
+        boost::asio::steady_timer m_timeout_timer;
+        status m_status=status::unknown;
     };
 }
 

@@ -31,11 +31,13 @@ namespace iudp
     template <class protocol>
     class connection_manager
     {
-        connection_channel<protocol> *m_channel;
-        std::unordered_map<std::pair<udp::endpoint, intptr_t>, std::unique_ptr<connection<protocol>>> m_connections;
 
     public:
-        connection_manager(connection_channel<protocol> *ch) : m_channel(ch){};
+        using connection_channel_t=connection_channel<protocol>;
+        using connection_manager_t=connection_manager<protocol>;
+        using connection_t=connection<protocol>;
+
+        connection_manager(connection_channel_t *ch) : m_channel(ch){};
 
         auto &connections() { return m_connections; }
         auto const&connections() const{ return m_connections; }
@@ -45,7 +47,7 @@ namespace iudp
         {
             auto key = std::make_pair(endpoint, id);
             auto&conns = connections();
-            return conns.insert(std::make_pair(key, std::make_unique<connection<protocol>>(m_channel, endpoint, id)));
+            return conns.insert(std::make_pair(key, std::make_unique<connection_t>(m_channel, endpoint, id)));
         }
         auto erase(udp::endpoint const &endpoint, intptr_t id)
         {
@@ -59,7 +61,7 @@ namespace iudp
             return connections().find(key);
         }
 
-        connection<protocol> *create_connection(udp::endpoint const &endpoint, intptr_t id)
+        connection_t *create_connection(udp::endpoint const &endpoint, intptr_t id)
         {
             return insert(endpoint, id).first->second.get();
         };
@@ -67,11 +69,11 @@ namespace iudp
         {
             return erase(endpoint, id) != 0;
         };
-        bool remove_connection(connection<protocol>*conn)
+        bool remove_connection(connection_t*conn)
         {
             return erase(conn->endpoint(), conn->id());
         };
-        connection<protocol> *get_connection(udp::endpoint const &endpoint, intptr_t id)
+        connection_t *get_connection(udp::endpoint const &endpoint, intptr_t id)
         {
             auto it = find(endpoint, id);
             if (it != end())
@@ -80,6 +82,10 @@ namespace iudp
             }
             return nullptr;
         };
+        private:
+            connection_channel_t *m_channel;
+            std::unordered_map<std::pair<udp::endpoint, intptr_t>, std::unique_ptr<connection_t>> m_connections;
+
     };
 }
 

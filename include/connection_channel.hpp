@@ -28,36 +28,11 @@ namespace iudp
     class connection_channel
     {
 
-        void udp_post(boost::asio::const_buffer buffer, udp::endpoint endpoint)
-        {
-
-            m_io_context.post(boost::bind(&connection_channel<protocol>::udp_handle,
-                                          this,
-                                          std::string(static_cast<const char *>(buffer.data()), buffer.size()),
-                                          endpoint));
-        }
-
-        void udp_handle(std::string data, udp::endpoint endpoint)
-        {
-            boost::asio::const_buffer buffer(data.data(), data.size());
-            auto key = protocol::id(buffer);
-            auto conn = m_connection_manager.get_connection(endpoint, key);
-            if (!conn)
-            {
-                conn = m_connection_manager.create_connection(endpoint, key);
-            }
-            if (conn)
-            {
-                boost::asio::const_buffer ready = conn->io(buffer);
-                if (ready.size())
-                {
-                    dispatch(conn, channel_event::data, ready);
-                }
-            }
-        }
-
     public:
-        using handler_t = std::function<bool(connection<protocol> *conn, channel_event event, boost::asio::const_buffer const &buffer)>;
+        using connection_channel_t = connection_channel<protocol>;
+        using connection_manager_t = connection_manager<protocol>;
+        using connection_t = connection<protocol>;
+        using handler_t = std::function<bool(connection_t *conn, channel_event event, boost::asio::const_buffer const &buffer)>;
 
         connection_channel(boost::asio::io_context &io_context,
                            udp::endpoint const &endpoint,
@@ -92,7 +67,7 @@ namespace iudp
             return m_io_context;
         }
 
-        void dispatch(connection<protocol> *conn, channel_event event, boost::asio::const_buffer const &buffer)
+        void dispatch(connection_t *conn, channel_event event, boost::asio::const_buffer const &buffer)
         {
             auto result = m_handler(conn, event, buffer);
             if (result)
@@ -111,7 +86,7 @@ namespace iudp
                 break;
             }
         }
-        void dispatch(connection<protocol> *conn, channel_event event)
+        void dispatch(connection_t *conn, channel_event event)
         {
             boost::asio::const_buffer buffer(nullptr, 0);
             dispatch(conn, event, buffer);
@@ -148,13 +123,40 @@ namespace iudp
         {
             m_timeout = time;
         }
-        connection_manager<protocol> const &connection_manager() const
+        connection_manager_t const &connection_manager() const
         {
             return m_connection_manager;
         }
 
     private:
-        connection_manager<protocol> m_connection_manager;
+        void udp_post(boost::asio::const_buffer buffer, udp::endpoint endpoint)
+        {
+
+            m_io_context.post(boost::bind(&connection_channel_t::udp_handle,
+                                          this,
+                                          std::string(static_cast<const char *>(buffer.data()), buffer.size()),
+                                          endpoint));
+        }
+
+        void udp_handle(std::string data, udp::endpoint endpoint)
+        {
+            boost::asio::const_buffer buffer(data.data(), data.size());
+            auto key = protocol::id(buffer);
+            auto conn = m_connection_manager.get_connection(endpoint, key);
+            if (!conn)
+            {
+                conn = m_connection_manager.create_connection(endpoint, key);
+            }
+            if (conn)
+            {
+                boost::asio::const_buffer ready = conn->io(buffer);
+                if (ready.size())
+                {
+                    dispatch(conn, channel_event::data, ready);
+                }
+            }
+        }
+        connection_manager_t m_connection_manager;
         boost::asio::io_context &m_io_context;
         udp_channel m_udp_channel;
         // udp::socket m_socket;
