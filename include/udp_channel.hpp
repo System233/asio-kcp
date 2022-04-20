@@ -39,7 +39,27 @@ namespace iudp
         {
             m_handler(buffer, endpoint);
         }
-
+        void start_thread(){
+            if(!m_worker_thread.joinable()){
+                m_worker_thread=std::thread(
+                [this]()
+                {
+                    start_recvice();
+                    stopped = false;
+                    m_io_context.run();
+                });
+            }
+        }
+        void stop_thread(){
+            if(!m_io_context.stopped()){
+                m_io_context.stop();
+                if (m_worker_thread.joinable())
+                {
+                    m_worker_thread.join();
+                    stopped = true;
+                }
+            }
+        }
     public:
         using handler_t = std::function<void(boost::asio::const_buffer buffer, udp::endpoint endpoint)>;
         udp_channel(udp::endpoint const &endpoint, handler_t handler)
@@ -47,6 +67,9 @@ namespace iudp
               m_socket(m_io_context, endpoint),
               m_handler(handler)
         {
+        }
+        ~udp_channel(){
+            stop();
         }
         udp::endpoint local_endpoint() const
         {
@@ -58,28 +81,17 @@ namespace iudp
         }
         void start()
         {
-            std::thread(
-                [this]()
-                {
-                    start_recvice();
-                    m_io_context.run();
-                }).detach();
-            stopped = false;
+            start_thread();
         }
         void stop()
         {
-            m_io_context.stop();
-            // if (m_worker_thread.joinable())
-            // {
-            //     m_worker_thread.join();
-            // }
-            stopped = true;
+            stop_thread();
         }
 
     private:
         boost::asio::io_context m_io_context;
         udp::socket m_socket;
-        // std::thread m_worker_thread;
+         std::thread m_worker_thread;
         udp::endpoint m_remote_endpoint;
         boost::array<char, 0x10000> m_recv_buffer;
         handler_t m_handler;
