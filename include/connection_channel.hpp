@@ -36,9 +36,11 @@ namespace iudp
 
         connection_channel(boost::asio::io_context &io_context,
                            udp::endpoint const &endpoint,
-                           handler_t handler) : m_io_context(io_context),
-                                                m_udp_channel(endpoint, [this](auto buffer, auto endpoint)
-                                                              { udp_post(buffer, endpoint); }),
+                           handler_t handler) :
+                           m_channel_context(),
+                           m_io_context(io_context),
+                                                m_udp_channel(m_channel_context,endpoint, [this](auto buffer, auto endpoint)
+                                                              { udp_handle(buffer, endpoint); }),
                                                 m_handler(handler),
                                                 m_connection_manager(this)
         {
@@ -66,6 +68,10 @@ namespace iudp
         {
             return m_io_context;
         }
+
+        boost::asio::io_context & channel_context(){
+            return m_channel_context;
+        };
 
         void dispatch(connection_t *conn, channel_event event, boost::asio::const_buffer const &buffer)
         {
@@ -147,18 +153,19 @@ namespace iudp
         }
 
     private:
-        void udp_post(boost::asio::const_buffer buffer, udp::endpoint endpoint)
-        {
-
-            io_context().post(boost::bind(&connection_channel_t::udp_handle,
-                                          this,
-                                          std::string(static_cast<const char *>(buffer.data()), buffer.size()),
-                                          endpoint));
-        }
-
-        void udp_handle(std::string data, udp::endpoint endpoint)
+        void data_handle(std::string data, connection_t*conn)
         {
             boost::asio::const_buffer buffer(data.data(), data.size());
+            dispatch(conn, channel_event::data, buffer);
+//            io_context().post(boost::bind(&connection_channel_t::udp_handle,
+//                                          this,
+//                                          std::string(static_cast<const char *>(buffer.data()), buffer.size()),
+//                                          endpoint));
+        }
+
+        void udp_handle(boost::asio::const_buffer buffer, udp::endpoint endpoint)
+        {
+//            boost::asio::const_buffer buffer(data.data(), data.size());
             auto key = protocol::id(buffer);
             auto conn = m_connection_manager.get_connection(endpoint, key);
             if (!conn)
@@ -168,16 +175,21 @@ namespace iudp
             if (conn)
             {
                 size_t current = 0;
-                while (current < data.size())
+                while (current < buffer.size())
                 {
-                    current += conn->handle(buffer,
+
+                    current += conn->handle(boost::asio::const_buffer(((char const*)buffer.data())+current,buffer.size()-current),
                                             [&](auto buffer)
                                             {
-                                                dispatch(conn, channel_event::data, buffer);
+                                                io_context().post(boost::bind(&connection_channel_t::data_handle,
+                                                                              this,
+                                                                              std::string(static_cast<const char *>(buffer.data()), buffer.size()),
+                                                                              conn));
                                             });
                 }
             }
         }
+        boost::asio::io_context m_channel_context;
         connection_manager_t m_connection_manager;
         boost::asio::io_context &m_io_context;
         udp_channel m_udp_channel;

@@ -72,10 +72,11 @@ namespace iudp
         using connection_channel_t=connection_channel<protocol>;
         using connection_t=connection<protocol>;
         connection(connection_channel_t *ch, udp::endpoint endpoint, intptr_t id) 
-        : m_protocol_ptr(boost::make_shared<protocol>(ch->io_context(), id, boost::bind(&connection_t::output, this,boost::placeholders::_1))),
+        : m_io_context(ch->channel_context()),
+            m_protocol_ptr(boost::make_shared<protocol>(io_context(), id, boost::bind(&connection_t::output, this,boost::placeholders::_1))),
             m_channel(ch),
             m_endpoint(endpoint),
-            m_timeout_timer(ch->io_context())
+            m_timeout_timer(io_context())
         {
             m_protocol_ptr->start();
             update_status(status::initialize);
@@ -122,8 +123,11 @@ namespace iudp
             update_timeout();
             return m_protocol_ptr->handle(buffer,handler);
         };
+        boost::asio::io_context& io_context(){
+            return m_io_context;
+        };
         private:
-        
+        boost::asio::io_context&m_io_context;
         connection_channel_t *m_channel;
         boost::shared_ptr<protocol>m_protocol_ptr;
         // protocol m_protocol_ptr;

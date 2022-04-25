@@ -62,8 +62,8 @@ namespace iudp
         }
     public:
         using handler_t = std::function<void(boost::asio::const_buffer buffer, udp::endpoint endpoint)>;
-        udp_channel(udp::endpoint const &endpoint, handler_t handler)
-            : m_io_context(),
+        udp_channel(boost::asio::io_context&io, udp::endpoint const &endpoint, handler_t handler)
+            : m_io_context(io),
               m_socket(m_io_context, endpoint),
               m_handler(handler)
         {
@@ -87,9 +87,9 @@ namespace iudp
         {
             stop_thread();
         }
-
+        boost::asio::io_context&io_context(){return m_io_context;}
     private:
-        boost::asio::io_context m_io_context;
+        boost::asio::io_context&m_io_context;
         udp::socket m_socket;
          std::thread m_worker_thread;
         udp::endpoint m_remote_endpoint;
